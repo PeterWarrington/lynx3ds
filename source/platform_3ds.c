@@ -3,6 +3,7 @@
  * main() via constructor/destructor attributes so LYMain.c stays unmodified.
  */
 #include <3ds.h>
+#include <bottom_ui.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +20,6 @@ static u32 *soc_buffer = NULL;
 extern void lynx3ds_console_init(void);
 extern void lynx3ds_present_frame(void);
 extern void lynx3ds_select_bottom(void);
-extern void lynx3ds_show_controls(void);
 
 static void log_step(const char *msg)
 {
@@ -65,6 +65,16 @@ static void lynx3ds_platform_init(void)
     lynx3ds_console_init();	/* so boot logging is visible on-screen from here on */
     log_step("gfxInitDefault done");
 
+    /*
+     * Bring up the bottom-screen UI as early as possible -- it's
+     * statically linked (no romfs needed), so this can run immediately.
+     * It spawns its own render thread, so it keeps animating for the
+     * whole rest of startup (Lynx parsing its config/history/etc. on the
+     * main thread) instead of a blank/flickering screen until Lynx
+     * reaches its input loop.
+     */
+    bottom_ui_init();
+
     {
 	Result rc = romfsInit();
 	char buf[64];
@@ -100,7 +110,6 @@ static void lynx3ds_platform_init(void)
 	log_step("soc_buffer alloc FAILED");
     }
     log_step("platform init done, entering Lynx main()");
-    lynx3ds_show_controls();
 }
 
 __attribute__((destructor))

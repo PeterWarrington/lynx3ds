@@ -982,8 +982,42 @@ int lkcstring_to_lkc(const char *src)
 		c &= ~LKC_ISLKC;
 	}
 #endif
-#endif
     }
+#else
+    } else {
+	/*
+	 * USE_KEYMAPS is disabled for this port (LYCurses.h excludes
+	 * __3DS__), so the Keysym_Strings[]/map_string_to_keysym()
+	 * name-lookup table (and the SLkm_* keymap machinery it would need
+	 * from S-Lang, which our shim doesn't implement) isn't compiled in.
+	 * Without this, remap() silently no-ops for any KEYMAP: directive in
+	 * lynx.cfg that names a key symbolically (e.g. "PGUP") instead of by
+	 * literal character -- so resolve the handful of such names here
+	 * directly from lynxkeycodes that always exist (LYStrings.h).
+	 */
+	static const struct {
+	    const char *name;
+	    int code;
+	} named_keys[] = {
+	    { "UPARROW", UPARROW_KEY },
+	    { "DNARROW", DNARROW_KEY },
+	    { "RTARROW", RTARROW_KEY },
+	    { "LTARROW", LTARROW_KEY },
+	    { "PGDOWN", PGDOWN_KEY },
+	    { "PGUP", PGUP_KEY },
+	    { "HOME", HOME_KEY },
+	    { "END", END_KEY },
+	};
+	size_t i;
+
+	for (i = 0; i < TABLESIZE(named_keys); i++) {
+	    if (!strcasecomp(src, named_keys[i].name)) {
+		c = named_keys[i].code;
+		break;
+	    }
+	}
+    }
+#endif
 
     if (c == CH_ESC) {
 	escape_bound = 1;

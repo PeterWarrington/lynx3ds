@@ -6,9 +6,11 @@
  * is the only point where we actually paint the top screen, via our own
  * proportional Open Sans pixel renderer (font_render.c) drawing straight
  * to the raw framebuffer -- not libctru's console, which only supports a
- * fixed 8x8 monospace font. The bottom screen (boot/debug log, static
- * controls legend) still uses an ordinary libctru console, since that's
- * unrelated UI. See LICENSE-OPENSANS.md for the font's license.
+ * fixed 8x8 monospace font. See LICENSE-OPENSANS.md for the font's license.
+ * The bottom screen is now bottom_ui.c's citro2d-rendered background +
+ * fading controls guide, not a console at all; boot/debug logging still
+ * goes to stdout (visible over 3dslink) but no longer to an on-screen
+ * console.
  *
  * Input: SLang_getkey() blocks on 3DS hardware input (D-Pad/Circle-Pad/
  * buttons) and feeds Lynx standard xterm-style escape sequences (arrows,
@@ -44,7 +46,6 @@ static char vch[MAX_ROWS][MAX_COLS];
 static unsigned char vattr[MAX_ROWS][MAX_COLS];
 static int cur_r = 0, cur_c = 0;
 static int cur_color = 0;
-static PrintConsole g_bottom_console;
 static bool g_console_ready = false;
 
 /* The 3DS top/bottom screens are double-buffered: nothing drawn/printed
@@ -59,34 +60,13 @@ void lynx3ds_present_frame(void)
     gspWaitForVBlank();
 }
 
-/* Lynx's actual UI is rendered directly to the top screen's raw
- * framebuffer by our own font renderer (font_render.c), not via a libctru
- * console -- so there is no "select top" the way there is for the bottom
- * screen's ordinary debug/controls console. */
+/* No-op now that the bottom screen is bottom_ui.c's citro2d rendering
+ * rather than a libctru console -- kept so platform_3ds.c/posix_compat_3ds.c
+ * don't need to special-case whether a console selection is meaningful
+ * before printing a debug/diagnostic line (those still go to plain
+ * stdout, visible over 3dslink, just not drawn on-screen anymore). */
 void lynx3ds_select_bottom(void)
 {
-    consoleSelect(&g_bottom_console);
-}
-
-/* Once boot is done there's nothing more to log -- a static controls
- * legend is more useful on the bottom screen than stale debug text. */
-void lynx3ds_show_controls(void)
-{
-    lynx3ds_select_bottom();
-    printf("\x1b[2J\x1b[0;0H"
-	   "  3DS Lynx Controls\n"
-	   "  -----------------\n"
-	   "\n"
-	   "  D-Pad / Circle-Pad : Move\n"
-	   "  A                  : Select / activate\n"
-	   "  B                  : Back\n"
-	   "  L / R              : Page Up / Down\n"
-	   "  SELECT             : Go to URL\n"
-	   "  (form fields open the keyboard\n"
-	   "   automatically when activated)\n"
-	   "  START+SELECT       : Force quit\n");
-    fflush(stdout);
-    lynx3ds_present_frame();
 }
 
 /* The top screen (Lynx's actual UI) is rendered entirely by our own
@@ -104,21 +84,16 @@ static void ensure_console(void)
 {
     if (g_console_ready)
 	return;
-    consoleInit(GFX_BOTTOM, &g_bottom_console);
-    lynx3ds_select_bottom();
     printf("lynx3ds: ensure_console: setting up top screen renderer...\n");
     fflush(stdout);
-    lynx3ds_present_frame();
 
     gfxSetScreenFormat(GFX_TOP, GSP_RGB565_OES);
     font_render_init();
     g_console_ready = true;
 
-    lynx3ds_select_bottom();
     printf("lynx3ds: ensure_console: top screen ready, %dx%d (Open Sans Bold font)\n",
 	   TOP_COLS, TOP_ROWS);
     fflush(stdout);
-    lynx3ds_present_frame();
 
     SLtt_Screen_Rows = TOP_ROWS;
     SLtt_Screen_Cols = TOP_COLS;
@@ -424,13 +399,16 @@ void lynx3ds_trigger_swkbd(const char *prefix)
  * poll iterations, which pace to vblank (~60Hz) whenever nothing else is
  * happening -- see the "idle" branch below. */
 #define REPEAT_INITIAL_DELAY 18	/* ~0.3s held before auto-repeat kicks in */
-#define REPEAT_INTERVAL 6	/* ~0.1s between repeats once it starts */
+#define REPEAT_INTERVAL 5	/* ~0.08s between repeats once it starts */
+
+#define TOUCH_SCROLL_STEP 6	/* px of drag per queued PGUP/PGDOWN */
 
 /* Poll 3DS hardware input until we have something to deliver, translating
  * it into the byte(s) Lynx's escape-sequence parser understands. */
 static void poll_hardware_input(void)
 {
     static int hold_up = 0, hold_down = 0;
+    static int touch_active = 0, touch_last_y = 0, touch_accum = 0;
 
     while (keyq_empty()) {
 	if (!aptMainLoop()) {
@@ -456,6 +434,41 @@ static void poll_hardware_input(void)
 	    fflush(stdout);
 	    lynx3ds_present_frame();
 	    _exit(0);		/* bypass our own exit() override -- this quit is real, not a bug to freeze-and-debug */
+	}
+
+	/*
+	 * Touch-drag scrolling: reuses the exact same PGUP/PGDOWN escape
+	 * sequences as L/R, which lynx.cfg's KEYMAP:PGUP:UP_TWO /
+	 * KEYMAP:PGDOWN:DOWN_TWO already remaps to Lynx's small 2-line
+	 * scroll actions rather than a full-page jump -- so dragging just
+	 * has to keep sending these as the finger moves, and Lynx's own
+	 * remapping gives the line-by-line feel. "Natural"/content-follows-
+	 * finger direction: dragging up reveals what's below (PGDOWN),
+	 * dragging down reveals what's above (PGUP).
+	 */
+	if (kHeld & KEY_TOUCH) {
+	    touchPosition touch;
+
+	    hidTouchRead(&touch);
+	    if (!touch_active) {
+		touch_active = 1;
+		touch_accum = 0;
+	    } else {
+		touch_accum += (int) touch.py - touch_last_y;
+		while (touch_accum >= TOUCH_SCROLL_STEP) {
+		    keyq_push_str("\x1b[5~");	/* dragged down -> page up */
+		    touch_accum -= TOUCH_SCROLL_STEP;
+		}
+		while (touch_accum <= -TOUCH_SCROLL_STEP) {
+		    keyq_push_str("\x1b[6~");	/* dragged up -> page down */
+		    touch_accum += TOUCH_SCROLL_STEP;
+		}
+	    }
+	    touch_last_y = touch.py;
+	    if (!keyq_empty())
+		return;
+	} else {
+	    touch_active = 0;
 	}
 
 	if (kDown & KEY_DUP)

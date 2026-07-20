@@ -3,3 +3,6 @@ build/
 *.3dsx
 *.smdh
 *.map
+*.cia
+cia/build/
+tools/

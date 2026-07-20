@@ -1063,6 +1063,24 @@ int main(int argc,
     WSADATA WSAData;
 #endif /* _WINDOWS */
 
+#ifdef __3DS__
+    /*
+     * When launched as an installed CIA title (rather than a .3dsx via the
+     * Homebrew Launcher/3dslink, which populate a real argv), the 3DS loader
+     * gives the process argc == 0 and argv == NULL -- there's no shell or
+     * launcher argument-passing protocol for a normal title launch. Lynx's
+     * very first touch of argv (`pgm = argv[0];` below) would then dereference
+     * a NULL pointer. This only ever crashed on real hardware, not in Citra,
+     * because the emulator happens to hand main() a non-NULL (if empty) argv.
+     */
+    if (argv == NULL) {
+	static char *lynx3ds_dummy_argv[] = { (char *) "lynx3ds", NULL };
+
+	argc = 1;
+	argv = lynx3ds_dummy_argv;
+    }
+#endif /* __3DS__ */
+
     /*
      * Just in case someone has the idea to install lynx set-uid, let's try
      * to discourage it.
