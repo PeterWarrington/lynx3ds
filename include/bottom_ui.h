@@ -18,4 +18,13 @@
  */
 void bottom_ui_init(void);
 
+/*
+ * Draws just the bg+fg guide sprites (no frame begin/end, no target clear
+ * -- caller must already be inside a C3D_FrameBegin/C2D_SceneBegin) with
+ * their combined opacity scaled by alpha_mul on top of the guide's own
+ * sine-wave fade. Used by image_preview.c to cross-fade this content out
+ * as a loaded image fades in, rather than cutting away to it abruptly.
+ */
+void bottom_ui_draw_content(float alpha_mul);
+
 #endif /* LYNX3DS_BOTTOM_UI_H */

@@ -47,14 +47,21 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations \
 			-ffunction-sections \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -D__3DS__ -DHAVE_CONFIG_H -DNOUSERS -D_GNU_SOURCE
+CFLAGS	+=	$(INCLUDE) -D__3DS__ -DHAVE_CONFIG_H -DNOUSERS -D_GNU_SOURCE -DCURL_STATICLIB
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lcitro2d -lcitro3d -lmbedtls -lmbedx509 -lmbedcrypto -lctru -lm
+#---------------------------------------------------------------------------------
+# -lcurl/-ljpeg/-lpng16/-lz back the bottom-screen image-hover-preview
+# (source/image_preview.c) -- devkitPro portlibs, install with:
+#   dkp-pacman -S 3ds-libcurl 3ds-libjpeg-turbo 3ds-libpng 3ds-zlib
+# Link order matters: each lib's own dependencies (per its pkg-config Libs:
+# line) must appear after it.
+#---------------------------------------------------------------------------------
+LIBS	:= -lcitro2d -lcitro3d -lcurl -ljpeg -lpng16 -lz -lmbedtls -lmbedx509 -lmbedcrypto -lctru -lm
 
 #---------------------------------------------------------------------------------
 PORTLIBS := $(DEVKITPRO)/portlibs/3ds
@@ -192,7 +199,7 @@ cia: all
 	@echo building $(TARGET).cia ...
 	@tools/makerom -f cia -o $(TARGET).cia -rsf cia/template.rsf -target t -exefslogo \
 		-icon cia/build/icon.smdh -banner cia/build/banner.bnr -elf $(TARGET).elf \
-		-romfs cia/build/romfs.bin -major 0 -minor 1 -micro 9
+		-romfs cia/build/romfs.bin -major 0 -minor 2 -micro 5
 
 #---------------------------------------------------------------------------------
 else

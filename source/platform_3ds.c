@@ -4,6 +4,7 @@
  */
 #include <3ds.h>
 #include <bottom_ui.h>
+#include <image_preview.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -109,6 +110,8 @@ static void lynx3ds_platform_init(void)
     } else {
 	log_step("soc_buffer alloc FAILED");
     }
+
+    image_preview_init();	/* needs sockets (just initialized above) for its background fetches */
     log_step("platform init done, entering Lynx main()");
 }
 

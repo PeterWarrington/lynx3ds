@@ -1079,6 +1079,22 @@ int main(int argc,
 	argc = 1;
 	argv = lynx3ds_dummy_argv;
     }
+
+    /*
+     * Selecting a link to a file Lynx can't render inline (e.g. .zip, .pdf)
+     * normally shows a "(D)ownload, (C)ancel" prompt (HTFWriter.c's
+     * HTSaveToFile()) that blocks on a literal 'D'/'C' keypress -- there's
+     * no input on 3DS that ever produces those characters, so it was a
+     * permanent soft-lock (only killing the app could recover). Setting
+     * both of these makes HTSaveToFile() skip straight to a
+     * CANNOT_DISPLAY_FILE message instead of ever entering that prompt
+     * (see the `no_download && !override_no_download && no_disk_save`
+     * check near the top of HTSaveToFile()) -- the same restriction Lynx
+     * already supports for kiosk/anonymous-account installs, just always
+     * on for this port.
+     */
+    no_download = TRUE;
+    no_disk_save = TRUE;
 #endif /* __3DS__ */
 
     /*

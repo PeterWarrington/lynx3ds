@@ -762,6 +762,21 @@ void LY3DS_goto_url(const char *url)
 	newdoc.internal_link = FALSE;
     }
 }
+
+/*
+ * Returns the URL of the currently highlighted link (the closest thing
+ * Lynx has to mouse "hover" without a mouse), or NULL if there isn't one.
+ * Used by the 3DS bottom-screen image-hover-preview (source/image_preview.c)
+ * -- curdoc is file-static here, so this is the minimal fact it needs;
+ * whether that URL looks like an image, fetching it, etc. is all policy
+ * that belongs on the 3DS side, not here.
+ */
+const char *LY3DS_current_link_url(void)
+{
+    if (curdoc.link < 0 || curdoc.link >= nlinks)
+	return NULL;
+    return links[curdoc.link].lname;
+}
 #endif /* __3DS__ */
 
 /* returns FALSE if user cancelled input or URL was invalid, TRUE otherwise */

@@ -13,6 +13,7 @@
  */
 #include <bottom_ui.h>
 #include <bookmarks.h>
+#include <image_preview.h>
 #include <citro2d.h>
 #include <math.h>
 
@@ -30,22 +31,26 @@ static bool ready = false;
 static u64 start_ms;
 static Thread render_thread;
 
-static void bottom_ui_render_once(void)
+void bottom_ui_draw_content(float alpha_mul)
 {
     double elapsed = (double) (osGetTime() - start_ms);
     float phase = (float) fmod(elapsed, FADE_PERIOD_MS) / (float) FADE_PERIOD_MS;
     float wave = (sinf(phase * 2.0f * (float) M_PI) + 1.0f) * 0.5f;	/* 0..1 */
-    float alpha = FADE_MIN + wave * (FADE_MAX - FADE_MIN);
+    float fg_alpha = (FADE_MIN + wave * (FADE_MAX - FADE_MIN)) * alpha_mul;
+    C2D_ImageTint bg_tint, fg_tint;
 
-    C2D_ImageTint tint;
+    C2D_AlphaImageTint(&bg_tint, alpha_mul);
+    C2D_AlphaImageTint(&fg_tint, fg_alpha);
+    C2D_DrawImageAt(img_bg, 0, 0, 0, &bg_tint, 1.0f, 1.0f);
+    C2D_DrawImageAt(img_fg, 0, 0, 0.5f, &fg_tint, 1.0f, 1.0f);
+}
 
-    C2D_AlphaImageTint(&tint, alpha);
-
+static void bottom_ui_render_once(void)
+{
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     C2D_TargetClear(bottom_target, C2D_Color32(0, 0, 0, 255));
     C2D_SceneBegin(bottom_target);
-    C2D_DrawImageAt(img_bg, 0, 0, 0, NULL, 1.0f, 1.0f);
-    C2D_DrawImageAt(img_fg, 0, 0, 0.5f, &tint, 1.0f, 1.0f);
+    bottom_ui_draw_content(1.0f);
     C3D_FrameEnd(0);
 }
 
@@ -55,6 +60,8 @@ static void bottom_ui_thread_main(void *arg)
     while (ready) {
 	if (bookmarks_is_open())
 	    bookmarks_render_bottom(bottom_target);
+	else if (image_preview_is_active())
+	    image_preview_render_bottom(bottom_target);
 	else
 	    bottom_ui_render_once();
 	gspWaitForVBlank();
@@ -80,26 +87,4 @@ void bottom_ui_init(void)
 
     render_thread = threadCreate(bottom_ui_thread_main, NULL,
 				  RENDER_THREAD_STACK_SIZE, 0x30, -1, false);
-}
-
-void bottom_ui_render(void)
-{
-    if (!ready)
-	return;
-
-    double elapsed = (double) (osGetTime() - start_ms);
-    float phase = (float) fmod(elapsed, FADE_PERIOD_MS) / (float) FADE_PERIOD_MS;
-    float wave = (sinf(phase * 2.0f * (float) M_PI) + 1.0f) * 0.5f;	/* 0..1 */
-    float alpha = FADE_MIN + wave * (FADE_MAX - FADE_MIN);
-
-    C2D_ImageTint tint;
-
-    C2D_AlphaImageTint(&tint, alpha);
-
-    C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-    C2D_TargetClear(bottom_target, C2D_Color32(0, 0, 0, 255));
-    C2D_SceneBegin(bottom_target);
-    C2D_DrawImageAt(img_bg, 0, 0, 0, NULL, 1.0f, 1.0f);
-    C2D_DrawImageAt(img_fg, 0, 0, 0.5f, &tint, 1.0f, 1.0f);
-    C3D_FrameEnd(0);
 }
