@@ -10,7 +10,18 @@ A beautiful text-mode web browser for the 3DS, ported from Lynx.
 
 ## Screenshot:
 
-<img width="629" height="722" alt="image" src="https://github.com/user-attachments/assets/70e66103-b6b4-4dbb-ad03-95ef8887beb7" />
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/eb4ac5c9-9bc0-4520-9677-d27851c25652" />
+
+<br/>
+
+
+<img width="250" alt="image" src="https://github.com/user-attachments/assets/4cf7097d-d768-4379-9afd-becfc9d313b7" />
+
+<img width="250" alt="image" src="https://github.com/user-attachments/assets/393dd4f2-9b91-4563-a09c-ed06b54df2f5" />
+
+<img width="250" alt="image" src="https://github.com/user-attachments/assets/e406595b-9cc1-4951-bbb0-44e512894e58" />
+
+
 
 ## AI Disclosure:
 
