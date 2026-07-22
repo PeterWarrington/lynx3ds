@@ -1,6 +1,6 @@
 # Lynx 3DS
 
-A beautiful text-mode web browser for the 3DS, ported from Lynx.
+A beautiful text-mode web browser for the 3DS, ported from Lynx... With image support!
 
 [Download Latest (cia / 3dsx)](https://github.com/PeterWarrington/lynx3ds/releases/latest)
 
@@ -8,7 +8,7 @@ A beautiful text-mode web browser for the 3DS, ported from Lynx.
 
 <img width="164" height="164" alt="image" src="https://github.com/user-attachments/assets/9d8ffce0-5528-41cd-9bbc-5fc520875707" />
 
-## Screenshot:
+## Screenshots:
 
 <img width="400" alt="image" src="https://github.com/user-attachments/assets/eb4ac5c9-9bc0-4520-9677-d27851c25652" />
 
